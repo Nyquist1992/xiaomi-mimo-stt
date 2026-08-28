@@ -1,0 +1,13 @@
+{
+  "domain": "xiaomi_mimo_stt",
+  "name": "Xiaomi MiMo ASR (Speech-to-Text)",
+  "codeowners": ["@Nyquist1992"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Nyquist1992/xiaomi-mimo-stt",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Nyquist1992/xiaomi-mimo-stt/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

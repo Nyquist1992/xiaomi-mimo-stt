@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Xiaomi MiMo ASR (語音辨識)",
+        "description": "輸入 MiMo API Key（於 mimo.mi.com 控制台取得）。金鑰會先驗證有效性再建立。",
+        "data": {
+          "name": "名稱",
+          "api_key": "API Key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "更新 MiMo API Key",
+        "description": "舊金鑰已失效或需要更換，請輸入新的 API Key。",
+        "data": {
+          "api_key": "新 API Key"
+        }
+      },
+      "reconfigure": {
+        "title": "重新設定 Xiaomi MiMo ASR",
+        "data": {
+          "language": "預設語言（auto=自動偵測）",
+          "api_key": "API Key（輸入即更換）"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "API Key 無效（驗證失敗）",
+      "cannot_connect": "無法連線到 MiMo API",
+      "unknown": "未知的驗證錯誤"
+    },
+    "abort": {
+      "already_configured": "此 API Key 已設定過"
+    }
+  },
+  "entity": {
+    "stt": {
+      "mimo_stt": {
+        "name": "MiMo ASR"
+      }
+    }
+  }
+}
