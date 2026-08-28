@@ -10,6 +10,7 @@ import base64
 import io
 import json
 import logging
+import time
 import wave
 from typing import Any, Final
 
@@ -111,8 +112,8 @@ class MimoASRClient:
         channels: int,
         bits_per_sample: int = 16,
         language: str = "zh",
-    ) -> str:
-        """Transcribe raw PCM audio via chat.completions + input_audio."""
+    ) -> tuple[str, int]:
+        """Transcribe raw PCM audio. Returns (text, usage_total_tokens)."""
         audio_b64 = pcm_to_wav_base64(pcm, sample_rate, channels, bits_per_sample)
         _LOGGER.debug("MiMo ASR payload size (b64): %d bytes", len(audio_b64))
         return await self.transcribe_b64(audio_b64, mime="audio/wav", language=language)
@@ -122,8 +123,8 @@ class MimoASRClient:
         audio_b64: str,
         mime: str = "audio/wav",
         language: str = "zh",
-    ) -> str:
-        """Transcribe a base64-encoded wav/mp3 payload."""
+    ) -> tuple[str, int]:
+        """Transcribe a base64 wav/mp3 payload. Returns (text, usage_total_tokens)."""
         url = f"{self._base_url}/chat/completions"
         body: dict[str, Any] = {
             "model": "mimo-v2.5-asr",
@@ -145,6 +146,7 @@ class MimoASRClient:
             # flatten). Keep it top-level for raw HTTP calls.
             "asr_options": {"language": language},
         }
+        start = time.monotonic()
         try:
             async with self._session.post(
                 url,
@@ -167,12 +169,17 @@ class MimoASRClient:
         except aiohttp.ClientConnectionError as exc:
             raise MimoASRConnectionError(str(exc)) from exc
 
+        self.last_duration_ms = (time.monotonic() - start) * 1000.0
+
         try:
             text: str = payload["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             _LOGGER.warning("Unexpected MiMo ASR response shape: %s", payload)
             raise MimoASRApiError("unexpected response shape") from exc
-        return (text or "").strip()
+
+        usage = payload.get("usage") or {}
+        tokens = int(usage.get("total_tokens") or 0)
+        return (text or "").strip(), tokens
 
     async def _safe_json(self, resp: aiohttp.ClientResponse) -> dict[str, Any] | None:
         try:

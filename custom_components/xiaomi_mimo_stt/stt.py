@@ -11,13 +11,14 @@ MiMo ASR API (https://mimo.mi.com):
   POST {base_url}/chat/completions
   model: mimo-v2.5-asr
   content: [{type: "input_audio", input_audio: {data: "data:audio/wav;base64,..."}}]
-  extra_body: {asr_options: {language: auto|zh|en}}
-  → text at choices[0].message.content
+  asr_options: {language: auto|zh|en}   ← top-level body field
+  → text at choices[0].message.content, token usage at usage.total_tokens
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import AsyncIterable
 
 from homeassistant.components.stt import (
@@ -53,7 +54,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the MiMo ASR STT entity from a config entry."""
@@ -67,6 +68,7 @@ async def async_setup_entry(
         [
             MimoSTREntity(
                 client=client,
+                stats=config_entry.runtime_data.stats,
                 name=config_entry.data.get(CONF_NAME, "Xiaomi MiMo ASR"),
                 default_language=config_entry.data.get(CONF_LANGUAGE, "zh"),
                 unique_id=config_entry.entry_id,
@@ -84,12 +86,14 @@ class MimoSTREntity(SpeechToTextEntity):
     def __init__(
         self,
         client: MimoASRClient,
+        stats,
         name: str,
         default_language: str,
         unique_id: str,
     ) -> None:
         """Init the STT entity."""
         self._client = client
+        self._stats = stats
         self._default_language = default_language
         self._attr_name = name
         self._attr_unique_id = unique_id
@@ -148,26 +152,33 @@ class MimoSTREntity(SpeechToTextEntity):
                     "Audio stream exceeds %d bytes limit for MiMo ASR",
                     MAX_AUDIO_BYTES,
                 )
+                self._stats.record_failure("empty", 0.0)
                 return SpeechResult("", SpeechResultState.ERROR)
 
         if not pcm:
             _LOGGER.error("No audio data received from pipeline")
+            self._stats.record_failure("empty", 0.0)
             return SpeechResult("", SpeechResultState.ERROR)
+
+        audio_seconds = len(pcm) / (metadata.sample_rate * 2)  # s16le = 2 bytes
 
         # Map HA pipeline language (zh-tw etc.) to MiMo's language option.
         lang = (metadata.language or self._default_language or "zh").lower()
         mimo_lang = LANGUAGE_TO_MIMO.get(lang, "auto")
 
         _LOGGER.debug(
-            "MiMo ASR: %d bytes PCM, rate=%d ch=%d lang=%s",
+            "MiMo ASR: %d bytes PCM (%.1fs), rate=%d ch=%d lang=%s",
             len(pcm),
+            audio_seconds,
             metadata.sample_rate,
             metadata.channel,
             mimo_lang,
         )
 
+        self._stats.record_start()
+        start = time.monotonic()
         try:
-            text = await self._client.transcribe_pcm(
+            text, tokens = await self._client.transcribe_pcm(
                 pcm=bytes(pcm),
                 sample_rate=metadata.sample_rate,
                 channels=metadata.channel,
@@ -176,17 +187,33 @@ class MimoSTREntity(SpeechToTextEntity):
             )
         except MimoASRAuthError as exc:
             _LOGGER.error("MiMo ASR auth failed: %s", exc)
+            self._stats.record_failure("auth", (time.monotonic() - start) * 1000)
             return SpeechResult("", SpeechResultState.ERROR)
-        except (MimoASRConnectionError, MimoASRApiError) as exc:
+        except MimoASRConnectionError as exc:
+            _LOGGER.error("MiMo ASR connection failed: %s", exc)
+            self._stats.record_failure("connection", (time.monotonic() - start) * 1000)
+            return SpeechResult("", SpeechResultState.ERROR)
+        except MimoASRApiError as exc:
             _LOGGER.error("MiMo ASR request failed: %s", exc)
+            self._stats.record_failure("api", (time.monotonic() - start) * 1000)
             return SpeechResult("", SpeechResultState.ERROR)
         except Exception:  # noqa: BLE001 — never crash the pipeline
             _LOGGER.exception("Unexpected error during MiMo ASR transcription")
+            self._stats.record_failure("api", (time.monotonic() - start) * 1000)
             return SpeechResult("", SpeechResultState.ERROR)
+
+        duration_ms = (time.monotonic() - start) * 1000
 
         if not text:
             _LOGGER.warning("MiMo ASR returned empty transcript")
+            self._stats.record_failure("empty", duration_ms)
             return SpeechResult("", SpeechResultState.FAIL)
 
-        _LOGGER.debug("MiMo ASR transcript: %s", text)
+        self._stats.record_success(
+            transcript=text,
+            duration_ms=duration_ms,
+            audio_seconds=audio_seconds,
+            tokens=tokens,
+        )
+        _LOGGER.debug("MiMo ASR transcript (%d ms): %s", duration_ms, text)
         return SpeechResult(text, SpeechResultState.SUCCESS)

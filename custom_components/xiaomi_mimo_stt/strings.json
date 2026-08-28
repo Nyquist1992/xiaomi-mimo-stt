@@ -1,7 +1,58 @@
 {
-  "domain": "xiaomi_mimo_stt",
-  "name": "Xiaomi MiMo ASR (Speech-to-Text)",
-  "config_flow": true,
-  "iot_class": "cloud_polling",
-  "integration_type": "service"
+  "config": {
+    "step": {
+      "user": {
+        "title": "Xiaomi MiMo ASR (Speech-to-Text)",
+        "description": "Enter your MiMo API key (get one at mimo.mi.com). The key is validated before the entry is created.",
+        "data": {
+          "name": "Name",
+          "api_key": "API Key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update MiMo API Key",
+        "description": "The previous key expired or must be replaced. Enter the new API key.",
+        "data": {
+          "api_key": "New API Key"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Xiaomi MiMo ASR",
+        "data": {
+          "language": "Default language (auto = detect)",
+          "api_key": "API Key (enter to replace)"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Invalid API key (validation failed)",
+      "cannot_connect": "Cannot connect to the MiMo API",
+      "unknown": "Unknown validation error"
+    },
+    "abort": {
+      "already_configured": "This API key is already configured"
+    }
+  },
+  "entity": {
+    "stt": {
+      "mimo_stt": {
+        "name": "MiMo ASR"
+      }
+    },
+    "sensor": {
+      "requests_total": { "name": "Requests total" },
+      "requests_success": { "name": "Requests success" },
+      "requests_failed": { "name": "Requests failed" },
+      "last_transcript": { "name": "Last transcript" },
+      "last_duration": { "name": "Last duration" },
+      "average_duration": { "name": "Average duration" },
+      "requests_today": { "name": "Requests today" },
+      "tokens_today": { "name": "Tokens today" },
+      "tokens_total": { "name": "Tokens total" },
+      "tokens_last": { "name": "Tokens last request" },
+      "cost_today": { "name": "Estimated cost today" },
+      "audio_today": { "name": "Audio seconds today" },
+      "last_error": { "name": "Last error" }
+    }
+  }
 }

@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Xiaomi MiMo ASR (語音辨識)",
+        "title": "Xiaomi MiMo ASR（語音辨識）",
         "description": "輸入 MiMo API Key（於 mimo.mi.com 控制台取得）。金鑰會先驗證有效性再建立。",
         "data": {
           "name": "名稱",
@@ -38,6 +38,21 @@
       "mimo_stt": {
         "name": "MiMo ASR"
       }
+    },
+    "sensor": {
+      "requests_total": { "name": "請求總數" },
+      "requests_success": { "name": "成功次數" },
+      "requests_failed": { "name": "失敗次數" },
+      "last_transcript": { "name": "最後轉錄文字" },
+      "last_duration": { "name": "最後耗時" },
+      "average_duration": { "name": "平均耗時" },
+      "requests_today": { "name": "今日請求數" },
+      "tokens_today": { "name": "今日 Token 消耗" },
+      "tokens_total": { "name": "累計 Token 消耗" },
+      "tokens_last": { "name": "最後請求 Token" },
+      "cost_today": { "name": "今日預估費用" },
+      "audio_today": { "name": "今日音訊秒數" },
+      "last_error": { "name": "最後錯誤" }
     }
   }
 }
