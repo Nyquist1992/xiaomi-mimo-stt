@@ -12,7 +12,8 @@ MiMo ASR API (https://mimo.mi.com):
   model: mimo-v2.5-asr
   content: [{type: "input_audio", input_audio: {data: "data:audio/wav;base64,..."}}]
   asr_options: {language: auto|zh|en}   ← top-level body field
-  → text at choices[0].message.content, token usage at usage.total_tokens
+  → text at choices[0].message.content
+  (billing is audio-duration based; the usage field is ignored)
 """
 
 from __future__ import annotations
@@ -178,7 +179,7 @@ class MimoSTREntity(SpeechToTextEntity):
         self._stats.record_start()
         start = time.monotonic()
         try:
-            text, tokens = await self._client.transcribe_pcm(
+            text = await self._client.transcribe_pcm(
                 pcm=bytes(pcm),
                 sample_rate=metadata.sample_rate,
                 channels=metadata.channel,
@@ -213,7 +214,6 @@ class MimoSTREntity(SpeechToTextEntity):
             transcript=text,
             duration_ms=duration_ms,
             audio_seconds=audio_seconds,
-            tokens=tokens,
         )
         _LOGGER.debug("MiMo ASR transcript (%d ms): %s", duration_ms, text)
         return SpeechResult(text, SpeechResultState.SUCCESS)

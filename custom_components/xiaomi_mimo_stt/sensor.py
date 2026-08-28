@@ -2,7 +2,8 @@
 
 Modelled on hass-cortex/xiaomi-mimo-tts sensor design, adapted for STT:
  - last_transcript is the killer feature for accuracy diagnosis
- - token / daily-usage / cost sensors (billing is ¥0.5 per audio hour)
+ - audio-time usage / cost sensors (billing is ¥0.5 per audio hour / $0.074 per audio hour)
+ - MiMo ASR bills by AUDIO DURATION, not tokens — no token sensors here.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from homeassistant.components.sensor import (
     RestoreSensor,
     SensorEntity,
     SensorStateClass,
+    SensorUnit,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -26,6 +28,10 @@ _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
 
+# Pricing per audio hour (official https://mimo.mi.com/docs/price):
+CNY_PER_AUDIO_HOUR = 0.5
+USD_PER_AUDIO_HOUR = 0.074
+
 ICONS = {
     "requests_total": "mdi:counter",
     "requests_success": "mdi:check-circle",
@@ -34,9 +40,6 @@ ICONS = {
     "last_duration": "mdi:timer-outline",
     "average_duration": "mdi:chart-line",
     "requests_today": "mdi:calendar-today",
-    "tokens_today": "mdi:ticket-percent-outline",
-    "tokens_total": "mdi:ticket-confirmation-outline",
-    "tokens_last": "mdi:ticket-outline",
     "cost_today": "mdi:cash",
     "audio_today": "mdi:waveform",
     "last_error": "mdi:bug-outline",
@@ -65,9 +68,6 @@ async def async_setup_entry(
         MimoDurationSensor(stats, device, "last_duration", "Last duration", restore=True, entry_id=config_entry.entry_id),
         MimoDurationSensor(stats, device, "average_duration", "Average duration", restore=False, entry_id=config_entry.entry_id),
         MimoCounterSensor(stats, device, "requests_today", "Requests today", SensorStateClass.TOTAL, entry_id=config_entry.entry_id),
-        MimoTokenSensor(stats, device, "tokens_today", "Tokens today", entry_id=config_entry.entry_id),
-        MimoTokenSensor(stats, device, "tokens_total", "Tokens total", entry_id=config_entry.entry_id),
-        MimoTokenSensor(stats, device, "tokens_last", "Tokens last request", enabled_default=False, entry_id=config_entry.entry_id),
         MimoCostSensor(stats, device, entry_id=config_entry.entry_id),
         MimoAudioSensor(stats, device, entry_id=config_entry.entry_id),
         MimoErrorSensor(stats, device, entry_id=config_entry.entry_id),
@@ -89,10 +89,6 @@ class _MimoSensorBase(SensorEntity):
             # Without unique_id entities never register in the entity registry:
             # they are invisible on the device page and get random entity_ids.
             self._attr_unique_id = f"{entry_id}_{key}"
-
-    @property
-    def _suffix(self) -> str:
-        return self._key.replace("_", " ").title()
 
     async def async_added_to_hass(self) -> None:
         self._stats.add_listener(self.async_write_ha_state)
@@ -136,7 +132,10 @@ class MimoTranscriptSensor(RestoreSensor, _MimoSensorBase):
 
 
 class MimoDurationSensor(RestoreSensor, _MimoSensorBase):
-    """API round-trip duration (ms)."""
+    """API round-trip duration."""
+
+    _attr_native_unit_of_measurement = SensorUnit.MILLISECONDS
+    _attr_suggested_display_precision = 0
 
     def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, restore: bool, entry_id: str | None = None) -> None:
         super().__init__(stats, device, key, name, entry_id=entry_id)
@@ -149,38 +148,30 @@ class MimoDurationSensor(RestoreSensor, _MimoSensorBase):
         return self._stats.average_duration_ms
 
 
-class MimoTokenSensor(RestoreSensor, _MimoSensorBase):
-    """Token usage (chat.completions usage field when present)."""
-
-    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, enabled_default: bool = True, entry_id: str | None = None) -> None:
-        super().__init__(stats, device, key, name, entry_id=entry_id)
-        self._attr_entity_registry_enabled_default = enabled_default
-        self._attr_state_class = SensorStateClass.TOTAL
-
-    @property
-    def native_value(self) -> int | None:
-        return int(getattr(self._stats, self._key))
-
-
 class MimoCostSensor(RestoreSensor, _MimoSensorBase):
-    """Estimated daily cost. MiMo ASR bills ¥0.5 per hour of input audio."""
+    """Estimated daily cost. MiMo ASR bills $0.074 per hour of input audio."""
 
     def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
-        super().__init__(stats, device, "cost_today", "Estimated cost today (CNY)", entry_id=entry_id)
+        super().__init__(stats, device, "cost_today", "Estimated cost today", entry_id=entry_id)
         self._attr_icon = ICONS["cost_today"]
         self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_native_unit_of_measurement = "USD"
+        self._attr_suggested_display_precision = 4
 
     @property
     def native_value(self) -> float:
-        return self._stats.estimated_cost_today
+        return round(self._stats.audio_seconds_today * USD_PER_AUDIO_HOUR / 3600.0, 4)
 
 
 class MimoAudioSensor(RestoreSensor, _MimoSensorBase):
     """Audio seconds billed today."""
 
+    _attr_native_unit_of_measurement = "s"
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_suggested_display_precision = 1
+
     def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
-        super().__init__(stats, device, "audio_today", "Audio seconds today", entry_id=entry_id)
-        self._attr_state_class = SensorStateClass.TOTAL
+        super().__init__(stats, device, "audio_today", "Audio today", entry_id=entry_id)
 
     @property
     def native_value(self) -> float:

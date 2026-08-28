@@ -27,8 +27,6 @@ async def async_get_config_entry_diagnostics(
             "requests_success": stats.requests_success,
             "requests_failed": stats.requests_failed,
             "requests_today": stats.requests_today,
-            "tokens_today": stats.tokens_today,
-            "tokens_total": stats.total_tokens,
             "audio_seconds_today": round(stats.audio_seconds_today, 1),
             "audio_seconds_total": round(stats.audio_seconds_total, 1),
             "last_duration_ms": stats.last_duration_ms,
