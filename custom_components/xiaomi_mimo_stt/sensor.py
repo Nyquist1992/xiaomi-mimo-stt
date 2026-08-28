@@ -14,9 +14,8 @@ from homeassistant.components.sensor import (
     RestoreSensor,
     SensorEntity,
     SensorStateClass,
-    SensorUnit,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -134,7 +133,7 @@ class MimoTranscriptSensor(RestoreSensor, _MimoSensorBase):
 class MimoDurationSensor(RestoreSensor, _MimoSensorBase):
     """API round-trip duration."""
 
-    _attr_native_unit_of_measurement = SensorUnit.MILLISECONDS
+    _attr_native_unit_of_measurement = UnitOfTime.MILLISECONDS
     _attr_suggested_display_precision = 0
 
     def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, restore: bool, entry_id: str | None = None) -> None:
@@ -166,7 +165,7 @@ class MimoCostSensor(RestoreSensor, _MimoSensorBase):
 class MimoAudioSensor(RestoreSensor, _MimoSensorBase):
     """Audio seconds billed today."""
 
-    _attr_native_unit_of_measurement = "s"
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_state_class = SensorStateClass.TOTAL
     _attr_suggested_display_precision = 1
 
