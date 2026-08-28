@@ -58,19 +58,19 @@ async def async_setup_entry(
         entry_type=DeviceEntryType.SERVICE,
     )
     entities: list[SensorEntity] = [
-        MimoCounterSensor(stats, device, "requests_total", "Requests total", SensorStateClass.TOTAL_INCREASING),
-        MimoCounterSensor(stats, device, "requests_success", "Requests success", SensorStateClass.TOTAL_INCREASING, enabled_default=False),
-        MimoCounterSensor(stats, device, "requests_failed", "Requests failed", SensorStateClass.TOTAL_INCREASING),
-        MimoTranscriptSensor(stats, device),
-        MimoDurationSensor(stats, device, "last_duration", "Last duration", restore=True),
-        MimoDurationSensor(stats, device, "average_duration", "Average duration", restore=False),
-        MimoCounterSensor(stats, device, "requests_today", "Requests today", SensorStateClass.TOTAL),
-        MimoTokenSensor(stats, device, "tokens_today", "Tokens today"),
-        MimoTokenSensor(stats, device, "tokens_total", "Tokens total"),
-        MimoTokenSensor(stats, device, "tokens_last", "Tokens last request", enabled_default=False),
-        MimoCostSensor(stats, device),
-        MimoAudioSensor(stats, device),
-        MimoErrorSensor(stats, device),
+        MimoCounterSensor(stats, device, "requests_total", "Requests total", SensorStateClass.TOTAL_INCREASING, entry_id=config_entry.entry_id),
+        MimoCounterSensor(stats, device, "requests_success", "Requests success", SensorStateClass.TOTAL_INCREASING, enabled_default=False, entry_id=config_entry.entry_id),
+        MimoCounterSensor(stats, device, "requests_failed", "Requests failed", SensorStateClass.TOTAL_INCREASING, entry_id=config_entry.entry_id),
+        MimoTranscriptSensor(stats, device, entry_id=config_entry.entry_id),
+        MimoDurationSensor(stats, device, "last_duration", "Last duration", restore=True, entry_id=config_entry.entry_id),
+        MimoDurationSensor(stats, device, "average_duration", "Average duration", restore=False, entry_id=config_entry.entry_id),
+        MimoCounterSensor(stats, device, "requests_today", "Requests today", SensorStateClass.TOTAL, entry_id=config_entry.entry_id),
+        MimoTokenSensor(stats, device, "tokens_today", "Tokens today", entry_id=config_entry.entry_id),
+        MimoTokenSensor(stats, device, "tokens_total", "Tokens total", entry_id=config_entry.entry_id),
+        MimoTokenSensor(stats, device, "tokens_last", "Tokens last request", enabled_default=False, entry_id=config_entry.entry_id),
+        MimoCostSensor(stats, device, entry_id=config_entry.entry_id),
+        MimoAudioSensor(stats, device, entry_id=config_entry.entry_id),
+        MimoErrorSensor(stats, device, entry_id=config_entry.entry_id),
     ]
     async_add_entities(entities)
 
@@ -79,12 +79,16 @@ class _MimoSensorBase(SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_has_entity_name = True
 
-    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str) -> None:
+    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, entry_id: str | None = None) -> None:
         self._stats = stats
         self._key = key
         self._attr_name = name
         self._attr_icon = ICONS.get(key)
         self._attr_device_info = device
+        if entry_id:
+            # Without unique_id entities never register in the entity registry:
+            # they are invisible on the device page and get random entity_ids.
+            self._attr_unique_id = f"{entry_id}_{key}"
 
     @property
     def _suffix(self) -> str:
@@ -97,16 +101,8 @@ class _MimoSensorBase(SensorEntity):
 class MimoCounterSensor(_MimoSensorBase):
     """Monotonic counters fed straight from CallStats fields."""
 
-    def __init__(
-        self,
-        stats: CallStats,
-        device: DeviceInfo,
-        key: str,
-        name: str,
-        state_class: SensorStateClass,
-        enabled_default: bool = True,
-    ) -> None:
-        super().__init__(stats, device, key, name)
+    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, key, name, entry_id=entry_id)
         self._attr_state_class = state_class
         self._attr_entity_registry_enabled_default = enabled_default
 
@@ -121,8 +117,8 @@ class MimoTranscriptSensor(RestoreSensor, _MimoSensorBase):
 
     _attr_icon = ICONS["last_transcript"]
 
-    def __init__(self, stats: CallStats, device: DeviceInfo) -> None:
-        super().__init__(stats, device, "last_transcript", "Last transcript")
+    def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, "last_transcript", "Last transcript", entry_id=entry_id)
 
     @property
     def native_value(self) -> str | None:
@@ -142,8 +138,8 @@ class MimoTranscriptSensor(RestoreSensor, _MimoSensorBase):
 class MimoDurationSensor(RestoreSensor, _MimoSensorBase):
     """API round-trip duration (ms)."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, restore: bool) -> None:
-        super().__init__(stats, device, key, name)
+    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, restore: bool, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, key, name, entry_id=entry_id)
         self._restore = restore
 
     @property
@@ -156,8 +152,8 @@ class MimoDurationSensor(RestoreSensor, _MimoSensorBase):
 class MimoTokenSensor(RestoreSensor, _MimoSensorBase):
     """Token usage (chat.completions usage field when present)."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, enabled_default: bool = True) -> None:
-        super().__init__(stats, device, key, name)
+    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, enabled_default: bool = True, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, key, name, entry_id=entry_id)
         self._attr_entity_registry_enabled_default = enabled_default
         self._attr_state_class = SensorStateClass.TOTAL
 
@@ -169,8 +165,8 @@ class MimoTokenSensor(RestoreSensor, _MimoSensorBase):
 class MimoCostSensor(RestoreSensor, _MimoSensorBase):
     """Estimated daily cost. MiMo ASR bills ¥0.5 per hour of input audio."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo) -> None:
-        super().__init__(stats, device, "cost_today", "Estimated cost today (CNY)")
+    def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, "cost_today", "Estimated cost today (CNY)", entry_id=entry_id)
         self._attr_icon = ICONS["cost_today"]
         self._attr_state_class = SensorStateClass.TOTAL
 
@@ -182,8 +178,8 @@ class MimoCostSensor(RestoreSensor, _MimoSensorBase):
 class MimoAudioSensor(RestoreSensor, _MimoSensorBase):
     """Audio seconds billed today."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo) -> None:
-        super().__init__(stats, device, "audio_today", "Audio seconds today")
+    def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, "audio_today", "Audio seconds today", entry_id=entry_id)
         self._attr_state_class = SensorStateClass.TOTAL
 
     @property
@@ -194,8 +190,8 @@ class MimoAudioSensor(RestoreSensor, _MimoSensorBase):
 class MimoErrorSensor(RestoreSensor, _MimoSensorBase):
     """Last error kind ('' = ok)."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo) -> None:
-        super().__init__(stats, device, "last_error", "Last error")
+    def __init__(self, stats: CallStats, device: DeviceInfo, entry_id: str | None = None) -> None:
+        super().__init__(stats, device, "last_error", "Last error", entry_id=entry_id)
         self._attr_icon = ICONS["last_error"]
 
     @property
