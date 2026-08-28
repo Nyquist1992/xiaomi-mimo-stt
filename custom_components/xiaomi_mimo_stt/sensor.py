@@ -101,7 +101,7 @@ class _MimoSensorBase(SensorEntity):
 class MimoCounterSensor(_MimoSensorBase):
     """Monotonic counters fed straight from CallStats fields."""
 
-    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, entry_id: str | None = None) -> None:
+    def __init__(self, stats: CallStats, device: DeviceInfo, key: str, name: str, state_class: SensorStateClass, enabled_default: bool = True, entry_id: str | None = None) -> None:
         super().__init__(stats, device, key, name, entry_id=entry_id)
         self._attr_state_class = state_class
         self._attr_entity_registry_enabled_default = enabled_default
