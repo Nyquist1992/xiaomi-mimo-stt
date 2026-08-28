@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets & local config
+.env
+config.yaml
+config.yml
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Large assets
+*.onnx
+models/
+debug/
