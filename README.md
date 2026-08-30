@@ -1,5 +1,7 @@
 # Xiaomi MiMo ASR — Home Assistant STT Integration
 
+![Xiaomi MiMo ASR](docs/banner.png)
+
 Turn Xiaomi's MiMo-V2.5-ASR into a Home Assistant Assist pipeline Speech-to-Text engine.
 將小米 MiMo-V2.5-ASR 接進 Home Assistant Assist Pipeline 作為語音辨識引擎。
 
