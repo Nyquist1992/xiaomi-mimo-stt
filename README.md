@@ -7,6 +7,9 @@ Turn Xiaomi's MiMo-V2.5-ASR into a Home Assistant Assist pipeline Speech-to-Text
 
 Based on / 基於 [hass-cortex/xiaomi-mimo-tts](https://github.com/hass-cortex/xiaomi-mimo-tts) (client, config-flow & sensor design reference / 用作用戶端、設定流程與感測器設計參考)
 
+**Pros**: excellent Chinese / noisy-environment / far-field recognition; low cost ($0.074/audio-hour — a 3-second command costs ~$0.00006)
+**Cons**: no hotword / custom vocabulary support; cloud-only (internet required, audio is sent to Xiaomi servers)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
